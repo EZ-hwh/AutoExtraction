@@ -14,18 +14,6 @@ print(lines[:5])
 f1 = open(filename[:-5]+'1.json', 'w', encoding='utf-8')
 f2 = open(filename[:-5]+'2.json', 'w', encoding='utf-8')
 
-""" f1_list = []
-f2_list = []
-for index, line in enumerate(lines):
-    if index in split_index:
-        f1_list.append(line)
-    else:
-        f2_list.append(line)
-f1.write(json.dumps(f1_list, ensure_ascii=False))
-f2.write(json.dumps(f2_list, ensure_ascii=False))
-f1.close()
-f2.close() """
-
 for index, line in enumerate(lines):
     if index in split_index:
         f1.write(line)

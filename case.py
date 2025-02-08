@@ -16,9 +16,6 @@ lang = 'zh'
 model_name = 'duee'
 
 # load data and rel_map
-""" with open(f'data/{dataset}/rel2id.json', 'r', encoding='utf-8') as f:
-    rel_map = json.load(f)
-rev_rel_map = {v: k for k, v in rel_map.items()} """
 
 # load tokenizer
 tokenizer = BertTokenizerFast.from_pretrained(plm)

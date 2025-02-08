@@ -1,4 +1,3 @@
-# 用于过滤一些跟顺序无关的句子
 from Environment import ExtractionEnv
 from transformers import BertTokenizerFast
 from tqdm import tqdm

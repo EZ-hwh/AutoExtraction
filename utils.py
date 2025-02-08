@@ -36,4 +36,4 @@ def text_f1(texta, textb):
     return 2 * prec * reca / (prec + reca + 1e-6)
 
 if __name__ == '__main__':
-    print(text_f1('上海市虹口区', '220号'))
+    print(text_f1('Hongkou District, Shanghai', 'Yangpu District, Shanghai'))

@@ -1,9 +1,9 @@
 ## README
 
-Implementation of the ACL23 findings paper: Adaptive Ordered Information Extraction with Deep Reinforcement Learning.
+Implementation of the ACL'23 findings paper: [*Adaptive Ordered Information Extraction with Deep Reinforcement Learning*](https://arxiv.org/abs/2306.10787).
 
 ## What we do in this work?
-In this work, we propose a novel **adaptive ordered** information extracion (IE) paradigm to find the optimal element extraction order for different instances. Specifically, we propose to adopt value-based reinforcement learning in determining the optimal extraction order for elements of an instance. In deciding the next extraction element for an instance, every of its unextracted elements will be evaluated with a potential benefit score, which is calculated with a BERT-based model. Then, the one with the highest potential benefit score will be selected as the next extraction object.
+In this work, we propose a novel adaptive ordered information extraction (IE) paradigm that optimally determines the extraction order for different instances. Specifically, we employ value-based reinforcement learning to identify the most effective extraction sequence. At each step, all unextracted elements of an instance are evaluated using a BERT-based model, which assigns a potential benefit score. The element with the highest score is then selected for extraction. Our framework integrates both extraction order planning and the extraction process itself, significantly enhancing performance in complex IE tasks such as relation extraction and event argument extraction.
 
 ![](assets/framework.png)
 

@@ -190,69 +190,10 @@ class ExtractionEnv:
         return:
         Reward, []
         '''
-        """ if self.lang == 'en':
-            new_cond = f'{cond}; {choices[action]}:'
-        elif self.lang == 'zh':
-            new_cond = f'{cond}； {choices[action]}：'
-        new_choices = copy.deepcopy(choices)
-        del new_choices[action]
-        input_ids, token_type_ids, offset, offset_mapping = self._example_generation(self.text, new_cond)
         
-        with torch.no_grad():
-            logits = self.extraction_model(input_ids.unsqueeze(0), token_type_ids.unsqueeze(0))
-            entities_1step = self._recognize(self.text, logits[0,0][offset:,offset:], offset_mapping[offset:])
-        
-        entities_2step = []
-        batch_ids, batch_token_types, batch_offset, batch_mapping = []
-        for entity in entities_1step:
-            for choice in new_choices:
-                if self.lang == 'en':
-                    tmp_cond = f'{new_cond}{entity[0]}; {choice}:'
-                elif self.lang == 'zh':
-                    tmp_cond = f'{new_cond}{entity[0]}； {choice}：'
-                input_ids, token_type_ids, offset, offset_mapping = self._example_generation(self.text, tmp_cond)
-                batch_ids.append(input_ids)
-                batch_token_types.append(token_type_ids)
-                batch_offset.append(offset)
-                batch_mapping.append(offset_mapping)
-
-        for minibatch_index in range((len(batch_ids) - 1) // 16 + 1):
-            input_ids = torch.nn.utils.rnn.pad_sequence(batch_ids[minibatch_index * 16: (minibatch_index + 1) * 16], batch_first=True)
-            token_type_ids = torch.nn.utils.rnn.pad_packed_sequence(batch_token_types[minibatch_index * 16: (minibatch_index + 1) * 16], batch_first=True)
-
-            logits = self.extraction_model(input_ids, token_type_ids)
-            for index, logit in enumerate(logits):
-                offset = batch_offset[minibatch_index * 16 + index]
-                offset_mapping = batch_mapping[minibatch_index * 16 + index]
-                entities_2step.append(self._recognize(self.text, logit[0][offset:,offset:], offset_mapping[offset:]))
-
-        reward, valid_conds = self.getReward(choices[action], entities, cond) """
-        ##########################################################
-        # FIXME: 这是根据信息增益定义的Reward Function
-        """ slot_name = choices[action]
-        prob_num, entities = self.choice_decision(cond, choices, action, step=2)
-        reward = prob_num
-        #print(reward)
-        if self.mode == 'train':
-        #if self.mode:
-            for act in range(len(choices)):
-                if act != action:
-                    tmp_prob = self.choice_decision(cond, choices, act, step=1)
-                    #print(tmp_prob)
-                    #reward += prob_num - tmp_prob
-                    reward -= tmp_prob
-
-        reward = reward / self.gt_num """
-        ##########################################################
         slot_name = choices[action]
         entities = self.choice_decision(cond, choices, action, step=0)
         reward = sum([entity[2] for entity in entities]) / len(entities)
-        """ print('*'*50)
-        print(self.text)
-        print(cond)
-        print(self.spo_list[cond])
-        print(entities)
-        print(reward) """
 
         entities = list(set([e[0] for e in entities]))
         valid_conds = []
@@ -317,17 +258,10 @@ class ExtractionEnv:
         valid_conds = []
         if entities == []:
             entities.append(('[None]', -10))
-        #print(entities)
-        #entities = list(set([e[0] for e in entities]))
         entities_mention = list(set([e[0] for e in entities]))
-        # 计算每个Entity出现的概率
         logsum = sum([math.exp(e[1]) for e in entities])
         entities = [(e[0],math.exp(e[1])/logsum) for e in entities]
         entities_score = [(name, sum([i[1] for i in entities if i[0] == name])) for name in entities_mention]
-        #print(entities_score)
-        #print(self.spo_list[cond])
-        #print(slot_name)
-        #print('*'*100)
 
         for entity in entities_score:
             if self.lang == 'en':
@@ -351,14 +285,6 @@ class ExtractionEnv:
                         if spo[slot_name][0] == entity[0]:
                             self.spo_list[new_cond].append(spo)
                             predict_truth_spo_num += 1 + (self.reward_type == 'v3') * entity[1]
-                    """ for _spo in self.spo_list[cond]:
-                        spo = _spo['arguments']
-                        if slot_name in spo.keys():
-                            for sn in spo[slot_name]:
-                                if sn['argument'] == entity[0]:
-                                    self.spo_list[new_cond].append(_spo)
-                                    predict_truth_spo_num += 1 + (self.reward_type == 'v3') * entity[1] """
-                            #break
                 else:
                     for _spo in self.spo_list[cond]:
                         spo = _spo['arguments']
@@ -389,7 +315,6 @@ class ExtractionEnv:
                         predict_truth_spo_num += 1 + (self.reward_type == 'v3') * entity[1]
             
         reward = predict_truth_spo_num
-        #self.spo_list = predict_truth_spo # 做答案的更新
         return reward, valid_conds
 
     def getState(self, cond, choices):
@@ -427,50 +352,6 @@ class ExtractionEnv:
                 torch.IntTensor(choice_mask), \
                 mask_index
         ]
-
-    """ def getState(self, cond, choices):
-        '''State包含：
-        1. 提示cond
-        2. 文本Text
-        3. 选项Choice
-        环境还是以文本为主，由cond + sent组成
-        目前将环境做成一个Multichoice的问题
-        '''
-        cond_tokens = self.tokenizer.tokenize(cond)
-        text_tokens = self.tokenizer.tokenize(self.text)
-        choice_tokens_list = [self.tokenizer.tokenize(choice) for choice in choices]
-        mask_index = []
-        # 构造Cond
-        tokens = [self.tokenizer.cls_token] + cond_tokens
-        choice_mask = [0] * len(tokens)
-
-        for choice_tokens in choice_tokens_list:
-            tokens.extend([self.tokenizer.sep_token] + choice_tokens)
-            mask_index.append(len(choice_mask))
-            choice_mask.extend([1] + [0] * len(choice_tokens))
-        
-        tokens.append(self.tokenizer.sep_token)
-        choice_mask.extend([0])
-        cond_offset = len(tokens)
-
-        # 构造Text
-        tokens.extend(text_tokens)
-        choice_mask.extend([0] * len(text_tokens))
-        
-        input_ids = self.tokenizer.convert_tokens_to_ids(tokens[:512])
-        choice_mask = choice_mask[:512]
-
-        token_type_ids = torch.zeros(len(input_ids)).int()
-        token_type_ids[cond_offset:] = 1
-
-        assert len(input_ids) == len(choice_mask)
-
-        return [torch.IntTensor(input_ids), \
-                token_type_ids, \
-                torch.IntTensor(choice_mask), \
-                mask_index
-        ]
-    """
 
     def return_cond(self):
         return self.spo_list
@@ -538,18 +419,6 @@ class ExtractionEnv:
 if __name__ == '__main__':
     from transformers import BertTokenizerFast
     tokenizer = BertTokenizerFast.from_pretrained('hfl/chinese-bert-wwm-ext')
-    """ env = ExtractionEnv(plm='hfl/chinese-bert-wwm-ext', 
-                        extraction_model_weight='weight/gp_duee.pt', 
-                        tokenizer=tokenizer, 
-                        data_path='data/DuEE1.0/duee_train.json', 
-                        dataset='DuEE1.0',
-                        lang='zh') """
-    """ env = ExtractionEnv(plm='hfl/chinese-bert-wwm-ext',
-                        extraction_model_weight='weight/gp_hacred.pt',
-                        tokenizer=tokenizer,
-                        data_path='data/HacRED/new_valid.json',
-                        dataset='HacRED',
-                        lang='zh') """
     env = ExtractionEnv(plm='bert-base-cased',
                         extraction_model_weight='weight/version1/gp_nyt.pt',
                         tokenizer=tokenizer,
@@ -558,15 +427,8 @@ if __name__ == '__main__':
                         lang='en')
 
     state_list, reward, done = env.reset()
-    #print(state_list, reward, done)
-    #print(reward)
     while not done:
         print('*'*100)
         cond, _, choices = state_list[0]
         state_list, reward, done = env.step(cond, 0, choices)
-        #print(state_list, reward, done)
         print(reward)
-
-    #cond, _, choices = state_list[0]
-    #state_list, reward, done = env.step(cond, 0, choices)
-    #print(reward)
